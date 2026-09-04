@@ -9,7 +9,7 @@ the history that nobody else is storing, and turns it into two things people
 cannot easily get today: **how congested a port is**, and **how much CO₂ a
 voyage burned**.
 
-Built by two people over three weekends. See [docs/ROLES.md](docs/ROLES.md)
+Built by two people over four weekends. See [docs/ROLES.md](docs/ROLES.md)
 for who owns what.
 
 ---
