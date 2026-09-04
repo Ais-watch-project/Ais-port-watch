@@ -1,0 +1,27 @@
+# Tonight this file starts one thing: the database.
+# Engine Room owns this file. By Weekend 2 it will start all four services.
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: ais_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ais_data:/var/lib/postgresql/data
+      # Anything in this folder runs automatically the FIRST time the
+      # database is created. That is how schema.sql gets applied.
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ais_data:

@@ -1,0 +1,21 @@
+# Secrets — never commit these
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Data — raw dumps and databases stay off GitHub
+data/
+*.db
+*.sqlite
+*.csv
+*.parquet
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
