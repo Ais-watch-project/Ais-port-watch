@@ -15,7 +15,6 @@ runs in a terminal (or better, on a cheap server) and quietly does its job.
 """
 
 import os
-import sys
 import time
 from datetime import datetime, timezone
 
@@ -39,6 +38,7 @@ HEADERS = {
 
 POSITION_INTERVAL = 60          # seconds between position polls (polite, and plenty)
 METADATA_INTERVAL = 30 * 60   # ship names change rarely; poll them less often
+MAX_BACKOFF = 300               # cap retry waits at 5 minutes
 
 
 def connect():
@@ -50,6 +50,25 @@ def connect():
         password=os.getenv("POSTGRES_PASSWORD", ""),
         dbname=os.getenv("POSTGRES_DB", "shiptracker"),
     )
+
+
+def connect_with_retry():
+    """
+    Keep trying to reach the database, backing off between attempts.
+
+    Used both at startup and whenever the connection is lost mid-run — a
+    container race (the collector starting before the db is ready) looks
+    identical to the db dying later, so both go through the same retry path
+    instead of the old behaviour of giving up if the db wasn't up yet.
+    """
+    backoff = 5
+    while True:
+        try:
+            return connect()
+        except Exception as exc:
+            log(f"cannot reach the database: {exc} — retrying in {backoff}s")
+            time.sleep(backoff)
+            backoff = min(backoff * 2, MAX_BACKOFF)
 
 
 def parse_positions(payload):
@@ -169,13 +188,7 @@ def log(message):
 
 
 def main():
-    try:
-        conn = connect()
-    except Exception as exc:
-        log(f"cannot reach the database: {exc}")
-        log("is it running? try:  docker compose up -d db")
-        sys.exit(1)
-
+    conn = connect_with_retry()
     log("collector started — leave this running")
     total = 0
     last_metadata = 0.0
@@ -208,11 +221,15 @@ def main():
             # so we do not hammer a service that is already struggling.
             log(f"error: {exc} — retrying in {backoff}s")
             time.sleep(backoff)
-            backoff = min(backoff * 2, 300)
-            try:
-                conn.rollback()
-            except Exception:
-                conn = connect()
+            backoff = min(backoff * 2, MAX_BACKOFF)
+
+            if conn.closed:
+                conn = connect_with_retry()
+            else:
+                try:
+                    conn.rollback()
+                except Exception:
+                    conn = connect_with_retry()
 
     conn.close()
 

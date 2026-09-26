@@ -1,6 +1,9 @@
 # Secrets — never commit these
 .env
 
+# Local-only compose overrides (e.g. port remaps for machine-specific conflicts)
+docker-compose.override.yml
+
 # Python
 __pycache__/
 *.py[cod]
